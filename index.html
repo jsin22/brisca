@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Brisca Card Game</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; background: #2e8b57; color: white; }
+    .hand, .played { display: flex; justify-content: center; margin: 10px; }
+    .card {
+      border: 1px solid #fff; background: #444; width: 60px; height: 90px; margin: 5px; 
+      display: flex; justify-content: center; align-items: center; cursor: pointer;
+    }
+    .trump, .deck, .score { margin: 10px; }
+    .disabled { opacity: 0.5; pointer-events: none; }
+  </style>
+</head>
+<body>
+
+<h1>Brisca Card Game</h1>
+
+<div class="trump">Trump: <span id="trump"></span></div>
+<div class="deck">Deck Cards Left: <span id="deckCount"></span></div>
+
+<h2>Your Hand</h2>
+<div class="hand" id="playerHand"></div>
+
+<h2>Played Cards</h2>
+<div class="played" id="playedCards"></div>
+
+<div class="score">Player Points: <span id="p1Points">0</span> | Computer Points: <span id="p2Points">0</span></div>
+
+<div id="message"></div>
+
+<script>
+  const suits = ['♠', '♥', '♦', '♣'];
+  let deck = [];
+  let playerHand = [];
+  let computerHand = [];
+  let trump = null;
+  let p1Points = 0;
+  let p2Points = 0;
+
+  function createDeck() {
+    deck = [];
+    for (let s = 0; s < 4; s++) {
+      for (let r = 1; r <= 10; r++) {
+        let rank = r;
+        if (rank === 8) rank = 11;
+        if (rank === 9) rank = 12;
+        deck.push({ rank, suit: suits[s] });
+      }
+    }
+    deck = deck.sort(() => Math.random() - 0.5);
+  }
+
+  function points(rank) {
+    if (rank === 1) return 11;
+    if (rank === 3) return 10;
+    if (rank === 10) return 2;
+    if (rank === 11) return 3;
+    if (rank === 12) return 4;
+    return 0;
+  }
+
+  function dealCards() {
+    while (playerHand.length < 3 && deck.length > 0) playerHand.push(deck.pop());
+    while (computerHand.length < 3 && deck.length > 0) computerHand.push(deck.pop());
+    updateDisplay();
+  }
+
+  function updateDisplay() {
+    const playerDiv = document.getElementById('playerHand');
+    playerDiv.innerHTML = '';
+    playerHand.forEach((card, idx) => {
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.textContent = card.rank + card.suit;
+      div.onclick = () => playRound(idx);
+      playerDiv.appendChild(div);
+    });
+    document.getElementById('trump').textContent = trump.rank + trump.suit;
+    document.getElementById('deckCount').textContent = deck.length;
+    document.getElementById('p1Points').textContent = p1Points;
+    document.getElementById('p2Points').textContent = p2Points;
+  }
+
+  function playRound(playerCardIndex) {
+    const playerCard = playerHand.splice(playerCardIndex, 1)[0];
+    const computerCard = computerHand.splice(Math.floor(Math.random() * computerHand.length), 1)[0];
+
+    const playedDiv = document.getElementById('playedCards');
+    playedDiv.innerHTML = `
+      <div class="card">${playerCard.rank}${playerCard.suit}</div>
+      <div class="card">${computerCard.rank}${computerCard.suit}</div>
+    `;
+
+    const winner = determineWinner(playerCard, computerCard);
+    const totalPoints = points(playerCard.rank) + points(computerCard.rank);
+
+    if (winner === 'player') {
+      p1Points += totalPoints;
+      document.getElementById('message').textContent = 'You win the round!';
+    } else {
+      p2Points += totalPoints;
+      document.getElementById('message').textContent = 'Computer wins the round!';
+    }
+
+    dealCards();
+
+    if (deck.length === 0 && playerHand.length === 0) {
+      document.getElementById('message').textContent = 
+        p1Points > p2Points ? 'Game Over: You Win!' :
+        p1Points < p2Points ? 'Game Over: Computer Wins!' :
+        'Game Over: Draw!';
+      document.getElementById('playerHand').classList.add('disabled');
+    }
+  }
+
+  function determineWinner(card1, card2) {
+    if (card1.suit === card2.suit) {
+      return card1.rank > card2.rank ? 'player' : 'computer';
+    } else if (card2.suit === trump.suit) {
+      return 'computer';
+    } else {
+      return 'player';
+    }
+  }
+
+  // Initialize game
+  createDeck();
+  trump = deck.pop();
+  dealCards();
+</script>
+
+</body>
+</html>
