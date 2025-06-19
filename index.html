@@ -78,7 +78,7 @@
       const div = document.createElement('div');
       div.className = 'card';
       div.textContent = card.rank + card.suit;
-      if (!waitingForPlayer || lastWinner === 'player') {
+      if (waitingForPlayer || lastWinner === 'player') {
         div.onclick = () => playerPlay(idx);
       } else {
         div.classList.add('disabled');
