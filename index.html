@@ -40,6 +40,8 @@
   let p1Points = 0;
   let p2Points = 0;
   let lastWinner = 'player'; // 'player' or 'computer'
+  let computerCard = null; // Holds the computer's played card if it plays first
+  let waitingForPlayer = false;
 
   function createDeck() {
     deck = [];
@@ -76,9 +78,14 @@
       const div = document.createElement('div');
       div.className = 'card';
       div.textContent = card.rank + card.suit;
-      div.onclick = () => playerPlay(idx);
+      if (!waitingForPlayer || lastWinner === 'player') {
+        div.onclick = () => playerPlay(idx);
+      } else {
+        div.classList.add('disabled');
+      }
       playerDiv.appendChild(div);
     });
+
     document.getElementById('trump').textContent = trump.rank + trump.suit;
     document.getElementById('deckCount').textContent = deck.length;
     document.getElementById('p1Points').textContent = p1Points;
@@ -86,28 +93,41 @@
   }
 
   function playerPlay(playerCardIndex) {
-    if (lastWinner === 'player') {
-      // Player plays first
-      const playerCard = playerHand.splice(playerCardIndex, 1)[0];
-      const computerCard = computerHand.splice(Math.floor(Math.random() * computerHand.length), 1)[0];
-      resolveRound(playerCard, computerCard);
-    } else {
-      // Computer plays first
-      const computerCard = computerHand.splice(Math.floor(Math.random() * computerHand.length), 1)[0];
+    if (waitingForPlayer) {
       const playerCard = playerHand.splice(playerCardIndex, 1)[0];
       resolveRound(playerCard, computerCard);
+      waitingForPlayer = false;
+    } else if (lastWinner === 'player') {
+      // Player plays first normally
+      const playerCard = playerHand.splice(playerCardIndex, 1)[0];
+      const compCard = computerHand.splice(Math.floor(Math.random() * computerHand.length), 1)[0];
+      resolveRound(playerCard, compCard);
     }
   }
 
-  function resolveRound(playerCard, computerCard) {
+  function computerPlayFirst() {
+    computerCard = computerHand.splice(Math.floor(Math.random() * computerHand.length), 1)[0];
+    waitingForPlayer = true;
+
     const playedDiv = document.getElementById('playedCards');
     playedDiv.innerHTML = `
-      <div class="card">${playerCard.rank}${playerCard.suit}</div>
+      <div class="card">?</div> <!-- Placeholder for player's future card -->
       <div class="card">${computerCard.rank}${computerCard.suit}</div>
     `;
 
-    const winner = determineWinner(playerCard, computerCard);
-    const totalPoints = points(playerCard.rank) + points(computerCard.rank);
+    document.getElementById('message').textContent = 'Computer played. Your turn!';
+    updateDisplay();
+  }
+
+  function resolveRound(playerCard, compCard) {
+    const playedDiv = document.getElementById('playedCards');
+    playedDiv.innerHTML = `
+      <div class="card">${playerCard.rank}${playerCard.suit}</div>
+      <div class="card">${compCard.rank}${compCard.suit}</div>
+    `;
+
+    const winner = determineWinner(playerCard, compCard);
+    const totalPoints = points(playerCard.rank) + points(compCard.rank);
 
     if (winner === 'player') {
       p1Points += totalPoints;
@@ -119,24 +139,26 @@
       lastWinner = 'computer';
     }
 
-    dealCards();
-
-    if (deck.length === 0 && playerHand.length === 0) {
-      document.getElementById('message').textContent = 
-        p1Points > p2Points ? 'Game Over: You Win!' :
-        p1Points < p2Points ? 'Game Over: Computer Wins!' :
-        'Game Over: Draw!';
-      document.getElementById('playerHand').classList.add('disabled');
-    }
+    setTimeout(() => {
+      dealCards();
+      checkGameOver();
+      if (!isGameOver()) {
+        if (lastWinner === 'computer') {
+          computerPlayFirst();
+        } else {
+          document.getElementById('message').textContent = 'Your turn to play first!';
+          updateDisplay();
+        }
+      }
+    }, 1000);
   }
 
-  function determineWinner(card1, card2) {
+  function determineWinner(playerCard, compCard) {
+    // Determine winner based on who played first (lastWinner)
     if (lastWinner === 'player') {
-      // player played first, so card1 is player, card2 is computer
-      return compareCards(card1, card2);
+      return compareCards(playerCard, compCard) === 'first' ? 'player' : 'computer';
     } else {
-      // computer played first, so card2 is computer, card1 is player
-      return compareCards(card2, card1);
+      return compareCards(compCard, playerCard) === 'first' ? 'computer' : 'player';
     }
   }
 
@@ -150,19 +172,31 @@
     }
   }
 
-  // Map compare result back to player or computer
-  function determineWinner(card1, card2) {
-    const result = compareCards(
-      lastWinner === 'player' ? card1 : card2,
-      lastWinner === 'player' ? card2 : card1
-    );
-    return result === 'first' ? lastWinner : (lastWinner === 'player' ? 'computer' : 'player');
+  function checkGameOver() {
+    if (deck.length === 0 && playerHand.length === 0) {
+      const msg =
+        p1Points > p2Points ? 'Game Over: You Win!' :
+        p1Points < p2Points ? 'Game Over: Computer Wins!' :
+        'Game Over: Draw!';
+      document.getElementById('message').textContent = msg;
+      document.getElementById('playerHand').classList.add('disabled');
+    }
+  }
+
+  function isGameOver() {
+    return deck.length === 0 && playerHand.length === 0;
   }
 
   // Initialize game
   createDeck();
   trump = deck.pop();
   dealCards();
+  if (lastWinner === 'computer') {
+    computerPlayFirst();
+  } else {
+    document.getElementById('message').textContent = 'Your turn to play first!';
+    updateDisplay();
+  }
 </script>
 
 </body>
