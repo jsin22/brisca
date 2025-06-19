@@ -39,6 +39,7 @@
   let trump = null;
   let p1Points = 0;
   let p2Points = 0;
+  let lastWinner = 'player'; // 'player' or 'computer'
 
   function createDeck() {
     deck = [];
@@ -75,7 +76,7 @@
       const div = document.createElement('div');
       div.className = 'card';
       div.textContent = card.rank + card.suit;
-      div.onclick = () => playRound(idx);
+      div.onclick = () => playerPlay(idx);
       playerDiv.appendChild(div);
     });
     document.getElementById('trump').textContent = trump.rank + trump.suit;
@@ -84,10 +85,21 @@
     document.getElementById('p2Points').textContent = p2Points;
   }
 
-  function playRound(playerCardIndex) {
-    const playerCard = playerHand.splice(playerCardIndex, 1)[0];
-    const computerCard = computerHand.splice(Math.floor(Math.random() * computerHand.length), 1)[0];
+  function playerPlay(playerCardIndex) {
+    if (lastWinner === 'player') {
+      // Player plays first
+      const playerCard = playerHand.splice(playerCardIndex, 1)[0];
+      const computerCard = computerHand.splice(Math.floor(Math.random() * computerHand.length), 1)[0];
+      resolveRound(playerCard, computerCard);
+    } else {
+      // Computer plays first
+      const computerCard = computerHand.splice(Math.floor(Math.random() * computerHand.length), 1)[0];
+      const playerCard = playerHand.splice(playerCardIndex, 1)[0];
+      resolveRound(playerCard, computerCard);
+    }
+  }
 
+  function resolveRound(playerCard, computerCard) {
     const playedDiv = document.getElementById('playedCards');
     playedDiv.innerHTML = `
       <div class="card">${playerCard.rank}${playerCard.suit}</div>
@@ -100,9 +112,11 @@
     if (winner === 'player') {
       p1Points += totalPoints;
       document.getElementById('message').textContent = 'You win the round!';
+      lastWinner = 'player';
     } else {
       p2Points += totalPoints;
       document.getElementById('message').textContent = 'Computer wins the round!';
+      lastWinner = 'computer';
     }
 
     dealCards();
@@ -117,13 +131,32 @@
   }
 
   function determineWinner(card1, card2) {
-    if (card1.suit === card2.suit) {
-      return card1.rank > card2.rank ? 'player' : 'computer';
-    } else if (card2.suit === trump.suit) {
-      return 'computer';
+    if (lastWinner === 'player') {
+      // player played first, so card1 is player, card2 is computer
+      return compareCards(card1, card2);
     } else {
-      return 'player';
+      // computer played first, so card2 is computer, card1 is player
+      return compareCards(card2, card1);
     }
+  }
+
+  function compareCards(firstCard, secondCard) {
+    if (firstCard.suit === secondCard.suit) {
+      return firstCard.rank > secondCard.rank ? 'first' : 'second';
+    } else if (secondCard.suit === trump.suit) {
+      return 'second';
+    } else {
+      return 'first';
+    }
+  }
+
+  // Map compare result back to player or computer
+  function determineWinner(card1, card2) {
+    const result = compareCards(
+      lastWinner === 'player' ? card1 : card2,
+      lastWinner === 'player' ? card2 : card1
+    );
+    return result === 'first' ? lastWinner : (lastWinner === 'player' ? 'computer' : 'player');
   }
 
   // Initialize game
